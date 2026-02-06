@@ -1,0 +1,36 @@
+{
+  "name": "onboarder",
+  "version": "1.0.0",
+  "description": "Automated Developer Environment Setup Tool - Reduces onboarding time from hours to minutes",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "server": "nodemon src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "onboarding",
+    "docker",
+    "automation",
+    "devops",
+    "environment-setup"
+  ],
+  "author": "aayush-1o <ayushh.ofc10@gmail.com>",
+  "license": "MIT",
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aayush-1o/Onboarder.git"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^8.9.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
