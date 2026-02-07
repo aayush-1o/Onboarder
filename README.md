@@ -148,22 +148,51 @@ The frontend will run on `http://localhost:3000`
 - [x] Tailwind CSS integration
 - [x] Basic project structure
 
-### 🔄 Day 2: Backend API & Database (NEXT)
-- [ ] Create MongoDB schemas
-- [ ] Implement REST API endpoints
-- [ ] GitHub API integration
-- [ ] Request validation
+### ✅ Day 2: Backend API & Database (COMPLETED)
+- [x] Create MongoDB schemas (Project, BuildLog)
+- [x] Implement REST API endpoints
+- [x] GitHub API integration
+- [x] Request validation & error handling
+- [x] API testing guide
 
-### 📋 Days 3-10: Remaining Features
+### 🔄 Day 3: Repository Cloning (NEXT)
+- [ ] Workspace management
+- [ ] Git clone service
+- [ ] File system utilities
+- [ ] Background job queue
+
+### 📋 Days 4-10: Remaining Features
 See [MVP Development Plan](./docs/mvp-plan.md) for complete schedule.
 
-## 🔌 API Endpoints (Day 1)
+## 🔌 API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/health` | Health check |
+| GET | `/api/health` | Health check with DB status |
+| POST | `/api/projects` | Create project from GitHub URL |
+| GET | `/api/projects` | List all projects (paginated) |
+| GET | `/api/projects/:id` | Get project details |
+| GET | `/api/projects/:id/logs` | Get build logs |
+| PATCH | `/api/projects/:id/status` | Update project status |
+| DELETE | `/api/projects/:id` | Delete project |
 
-*More endpoints will be added in Day 2*
+**Testing Guide**: See [API_TESTING.md](./API_TESTING.md)
+
+## 🧪 Testing the API
+
+### Quick Test (PowerShell)
+```powershell
+# Health check
+Invoke-RestMethod -Uri "http://localhost:5000/api/health"
+
+# Create a project
+$body = @{ repoUrl = "https://github.com/aayush-1o/Onboarder" } | ConvertTo-Json
+Invoke-RestMethod -Uri "http://localhost:5000/api/projects" -Method POST -Body $body -ContentType "application/json"
+
+# List all projects
+Invoke-RestMethod -Uri "http://localhost:5000/api/projects"
+```
+
 
 ## 🌟 Planned Features
 
