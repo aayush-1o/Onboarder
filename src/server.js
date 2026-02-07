@@ -2,6 +2,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const connectDB = require('./config/database');
+const { errorHandler, notFound } = require('./middleware/errorHandler');
 
 // Load environment variables
 dotenv.config();
@@ -13,31 +15,37 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Basic health check route
+// Request logging middleware (development)
+if (process.env.NODE_ENV === 'development') {
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.path}`);
+    next();
+  });
+}
+
+// Routes
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'Onboarder Backend is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
   });
 });
 
-// MongoDB Connection
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`Error: ${error.message}`);
-    process.exit(1);
-  }
-};
+// API Routes
+app.use('/api/projects', require('./routes/projectRoutes'));
+
+// 404 handler
+app.use(notFound);
+
+// Error handler (must be last)
+app.use(errorHandler);
 
 // Connect to database
 connectDB();
+
 
 // Start server
 const PORT = process.env.PORT || 5000;
