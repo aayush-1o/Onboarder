@@ -6,9 +6,10 @@ Onboarder reduces developer onboarding time from hours to minutes by automatical
 
 ## 📋 Project Status
 
-**Current Phase**: Day 1 Complete ✅  
-**MVP Timeline**: 10 Days  
+**Current Phase**: Day 2 Complete ✅  
+**MVP Timeline**: 10 Days (Day 3 in progress)  
 **Technology**: MERN Stack + Docker
+
 
 ## 🎯 What is Onboarder?
 
