@@ -70,8 +70,18 @@ const ProjectSchema = new mongoose.Schema({
         containerId: String
     },
 
-    // Metadata
+    // Workspace & Cloning Information
     workspacePath: String,
+    cloneStatus: {
+        type: String,
+        enum: ['pending', 'cloning', 'cloned', 'failed'],
+        default: 'pending'
+    },
+    clonedAt: Date,
+    workspaceSize: Number, // Size in bytes
+    jobId: String, // Reference to background job
+
+    // Metadata
     lastBuildAt: Date,
     errorMessage: String
 
@@ -83,6 +93,8 @@ const ProjectSchema = new mongoose.Schema({
 ProjectSchema.index({ repoUrl: 1 });
 ProjectSchema.index({ status: 1 });
 ProjectSchema.index({ createdAt: -1 });
+ProjectSchema.index({ cloneStatus: 1 });
+ProjectSchema.index({ jobId: 1 });
 
 // Virtual for repository identifier
 ProjectSchema.virtual('repoIdentifier').get(function () {

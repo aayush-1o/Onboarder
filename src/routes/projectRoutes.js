@@ -3,32 +3,23 @@ const router = express.Router();
 const Project = require('../models/Project');
 const BuildLog = require('../models/BuildLog');
 const githubService = require('../services/githubService');
+const projectService = require('../services/projectService');
+const jobQueue = require('../services/jobQueue');
 const asyncHandler = require('../utils/asyncHandler');
 
 /**
  * @route   POST /api/projects
- * @desc    Create a new project from GitHub URL
+ * @desc    Create a new project from GitHub URL and trigger cloning
  * @access  Public
  */
 router.post('/', asyncHandler(async (req, res) => {
-    const { repoUrl } = req.body;
+    const { repoUrl, branch } = req.body;
 
     // Validate input
     if (!repoUrl) {
         return res.status(400).json({
             success: false,
             error: 'Repository URL is required'
-        });
-    }
-
-    // Get repository metadata from GitHub
-    let repoMetadata;
-    try {
-        repoMetadata = await githubService.getRepoMetadata(repoUrl);
-    } catch (error) {
-        return res.status(400).json({
-            success: false,
-            error: error.message
         });
     }
 
@@ -42,27 +33,16 @@ router.post('/', asyncHandler(async (req, res) => {
         });
     }
 
-    // Create new project
-    const project = await Project.create({
+    // Create project and trigger cloning
+    const result = await projectService.createProjectWithClone(
         repoUrl,
-        name: repoMetadata.name,
-        owner: repoMetadata.owner,
-        defaultBranch: repoMetadata.defaultBranch,
-        status: 'pending'
-    });
-
-    // Create initial log entry
-    await BuildLog.createLog(
-        project._id,
-        'info',
-        `Project created: ${repoMetadata.fullName}`,
-        { level: 'success', phase: 'initialization' }
+        branch || 'main'
     );
 
     res.status(201).json({
         success: true,
-        message: 'Project created successfully',
-        data: project
+        message: result.message,
+        data: result
     });
 }));
 
@@ -149,28 +129,65 @@ router.get('/:id/logs', asyncHandler(async (req, res) => {
 
 /**
  * @route   DELETE /api/projects/:id
- * @desc    Delete a project
+ * @desc    Delete a project with workspace cleanup
  * @access  Public
  */
 router.delete('/:id', asyncHandler(async (req, res) => {
-    const project = await Project.findById(req.params.id);
-
-    if (!project) {
-        return res.status(404).json({
-            success: false,
-            error: 'Project not found'
-        });
-    }
-
-    // Delete associated logs
-    await BuildLog.deleteMany({ projectId: req.params.id });
-
-    // Delete project
-    await project.deleteOne();
+    await projectService.deleteProjectWithCleanup(req.params.id);
 
     res.json({
         success: true,
-        message: 'Project and associated logs deleted successfully'
+        message: 'Project and workspace deleted successfully'
+    });
+}));
+
+/**
+ * @route   GET /api/projects/:id/clone-status
+ * @desc    Get clone status for a project
+ * @access  Public
+ */
+router.get('/:id/clone-status', asyncHandler(async (req, res) => {
+    const status = await projectService.getProjectStatus(req.params.id);
+
+    res.json({
+        success: true,
+        data: {
+            cloneStatus: status.project.cloneStatus,
+            clonedAt: status.project.clonedAt,
+            workspacePath: status.project.workspacePath,
+            workspaceSize: status.project.workspaceSize,
+            jobStatus: status.jobStatus,
+            progress: status.cloneProgress
+        }
+    });
+}));
+
+/**
+ * @route   POST /api/projects/:id/reclone
+ * @desc    Re-clone a repository
+ * @access  Public
+ */
+router.post('/:id/reclone', asyncHandler(async (req, res) => {
+    const result = await projectService.recloneRepository(req.params.id);
+
+    res.json({
+        success: true,
+        message: result.message,
+        data: result
+    });
+}));
+
+/**
+ * @route   GET /api/projects/:id/workspace
+ * @desc    Get workspace information
+ * @access  Public
+ */
+router.get('/:id/workspace', asyncHandler(async (req, res) => {
+    const workspaceInfo = await projectService.getWorkspaceInfo(req.params.id);
+
+    res.json({
+        success: true,
+        data: workspaceInfo
     });
 }));
 

@@ -43,9 +43,28 @@ app.use(notFound);
 // Error handler (must be last)
 app.use(errorHandler);
 
-// Connect to database
+// Connect to database and initialize services
 connectDB();
 
+// Initialize workspace and validate Git
+(async () => {
+  try {
+    const fileSystem = require('./utils/fileSystem');
+    const repoCloneService = require('./services/repoCloneService');
+
+    // Ensure workspace directories exist
+    await fileSystem.ensureWorkspaceDirectories();
+    console.log('✓ Workspace directories initialized');
+
+    // Validate Git installation
+    const gitInstalled = await repoCloneService.validateGitInstallation();
+    if (!gitInstalled) {
+      console.warn('⚠ Warning: Git is not installed. Repository cloning will not work.');
+    }
+  } catch (error) {
+    console.error('Initialization error:', error.message);
+  }
+})();
 
 // Start server
 const PORT = process.env.PORT || 5000;
