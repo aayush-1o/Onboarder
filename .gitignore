@@ -26,8 +26,11 @@ Thumbs.db
 *.swo
 *~
 
-# Workspace (cloned repositories)
-workspace/
+# Workspace (exclude contents but keep structure)
+workspace/projects/*
+!workspace/projects/.gitkeep
+workspace/temp/*
+!workspace/temp/.gitkeep
 
 # Build outputs
 dist/

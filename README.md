@@ -6,8 +6,8 @@ Onboarder reduces developer onboarding time from hours to minutes by automatical
 
 ## 📋 Project Status
 
-**Current Phase**: Day 2 Complete ✅  
-**MVP Timeline**: 10 Days (Day 3 in progress)  
+**Current Phase**: Day 3 Complete ✅  
+**MVP Timeline**: 10 Days (Day 4 next)  
 **Technology**: MERN Stack + Docker
 
 
@@ -156,11 +156,18 @@ The frontend will run on `http://localhost:3000`
 - [x] Request validation & error handling
 - [x] API testing guide
 
-### 🔄 Day 3: Repository Cloning (NEXT)
-- [ ] Workspace management
-- [ ] Git clone service
-- [ ] File system utilities
-- [ ] Background job queue
+### ✅ Day 3: Repository Cloning (COMPLETED)
+- [x] Workspace management
+- [x] Git clone service  
+- [x] File system utilities
+- [x] Background job queue
+- [x] API integration
+
+### 🔄 Day 4: Code Analysis (NEXT)
+- [ ] Tech stack detection
+- [ ] Dependency analysis
+- [ ] Language detection
+- [ ] Framework identification
 
 ### 📋 Days 4-10: Remaining Features
 See [MVP Development Plan](./docs/mvp-plan.md) for complete schedule.
@@ -174,8 +181,11 @@ See [MVP Development Plan](./docs/mvp-plan.md) for complete schedule.
 | GET | `/api/projects` | List all projects (paginated) |
 | GET | `/api/projects/:id` | Get project details |
 | GET | `/api/projects/:id/logs` | Get build logs |
+| GET | `/api/projects/:id/clone-status` | Get clone progress |
+| POST | `/api/projects/:id/reclone` | Re-clone repository |
+| GET | `/api/projects/:id/workspace` | Get workspace info |
 | PATCH | `/api/projects/:id/status` | Update project status |
-| DELETE | `/api/projects/:id` | Delete project |
+| DELETE | `/api/projects/:id` | Delete project + workspace |
 
 **Testing Guide**: See [API_TESTING.md](./API_TESTING.md)
 
@@ -225,6 +235,13 @@ NODE_ENV=development
 MONGODB_URI=mongodb://localhost:27017/onboarder
 GITHUB_TOKEN=
 FRONTEND_URL=http://localhost:3000
+
+# Workspace Configuration (Day 3)
+WORKSPACE_ROOT=./workspace
+WORKSPACE_MAX_SIZE_MB=5000
+GIT_CLONE_TIMEOUT_MS=300000
+MAX_CONCURRENT_JOBS=3
+JOB_RETRY_ATTEMPTS=2
 ```
 
 ## 🤝 Contributing

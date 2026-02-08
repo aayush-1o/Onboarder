@@ -12,7 +12,7 @@ const BuildLogSchema = new mongoose.Schema({
     // Log Information
     logType: {
         type: String,
-        enum: ['clone', 'analysis', 'docker-generate', 'docker-build', 'container-start', 'container-stop', 'error', 'info'],
+        enum: ['clone', 'analysis', 'docker-generate', 'docker-build', 'container-start', 'container-stop', 'error', 'info', 'workspace', 'git', 'filesystem', 'queue'],
         required: true
     },
 
