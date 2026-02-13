@@ -234,4 +234,144 @@ router.patch('/:id/status', asyncHandler(async (req, res) => {
     });
 }));
 
+// ========== Day 4: Code Analysis Endpoints ==========
+
+/**
+ * @route   GET /api/projects/:id/analysis
+ * @desc    Get complete code analysis results
+ * @access  Public
+ */
+router.get('/:id/analysis', asyncHandler(async (req, res) => {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+        return res.status(404).json({
+            success: false,
+            error: 'Project not found'
+        });
+    }
+
+    const codeAnalysisService = require('../services/codeAnalysisService');
+    const summary = codeAnalysisService.getAnalysisSummary(project);
+
+    res.json({
+        success: true,
+        data: {
+            analysisStatus: project.analysisStatus,
+            analysis: project.analysis,
+            dependencies: project.dependencies,
+            analyzedAt: project.analyzedAt,
+            summary
+        }
+    });
+}));
+
+/**
+ * @route   POST /api/projects/:id/analyze
+ * @desc    Trigger manual code analysis
+ * @access  Public
+ */
+router.post('/:id/analyze', asyncHandler(async (req, res) => {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+        return res.status(404).json({
+            success: false,
+            error: 'Project not found'
+        });
+    }
+
+    // Check if project is cloned
+    if (project.cloneStatus !== 'cloned') {
+        return res.status(400).json({
+            success: false,
+            error: 'Project must be cloned before analysis',
+            cloneStatus: project.cloneStatus
+        });
+    }
+
+    // Trigger analysis job
+    const jobId = jobQueue.addJob(jobQueue.JobType.ANALYZE, {
+        projectId: project._id,
+        projectPath: project.workspacePath
+    });
+
+    res.json({
+        success: true,
+        message: 'Analysis started',
+        data: {
+            jobId,
+            projectId: project._id,
+            analysisStatus: 'analyzing'
+        }
+    });
+}));
+
+/**
+ * @route   GET /api/projects/:id/dependencies
+ * @desc    Get project dependencies list
+ * @access  Public
+ */
+router.get('/:id/dependencies', asyncHandler(async (req, res) => {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+        return res.status(404).json({
+            success: false,
+            error: 'Project not found'
+        });
+    }
+
+    if (!project.dependencies || project.analysisStatus !== 'completed') {
+        return res.status(400).json({
+            success: false,
+            error: 'Analysis not completed yet',
+            analysisStatus: project.analysisStatus
+        });
+    }
+
+    res.json({
+        success: true,
+        data: {
+            files: project.dependencies.files,
+            ecosystems: project.dependencies.ecosystems,
+            runtime: project.dependencies.runtime,
+            development: project.dependencies.development,
+            totalCount: project.dependencies.totalCount
+        }
+    });
+}));
+
+/**
+ * @route   GET /api/projects/:id/tech-stack
+ * @desc    Get tech stack summary
+ * @access  Public
+ */
+router.get('/:id/tech-stack', asyncHandler(async (req, res) => {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+        return res.status(404).json({
+            success: false,
+            error: 'Project not found'
+        });
+    }
+
+    if (!project.analysis || project.analysisStatus !== 'completed') {
+        return res.status(400).json({
+            success: false,
+            error: 'Analysis not completed yet',
+            analysisStatus: project.analysisStatus
+        });
+    }
+
+    const codeAnalysisService = require('../services/codeAnalysisService');
+    const techStack = codeAnalysisService.getTechStackSummary(project);
+
+    res.json({
+        success: true,
+        data: techStack
+    });
+}));
+
 module.exports = router;
