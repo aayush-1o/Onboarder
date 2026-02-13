@@ -38,7 +38,52 @@ const ProjectSchema = new mongoose.Schema({
         default: 'pending'
     },
 
-    // Analysis Results
+    // Analysis Results (New - Day 4)
+    analysisStatus: {
+        type: String,
+        enum: ['pending', 'analyzing', 'completed', 'failed'],
+        default: 'pending'
+    },
+
+    analysis: {
+        languages: [{
+            name: String,
+            percentage: Number,
+            fileCount: Number
+        }],
+        primaryLanguage: String,
+        frameworks: [{
+            name: String,
+            type: String,  // 'backend', 'frontend', 'fullstack', 'mobile'
+            confidence: Number
+        }],
+        hasDatabase: Boolean,
+        databases: [String],
+        buildTools: [String],
+        packageManager: String
+    },
+
+    dependencies: {
+        files: [String],
+        runtime: [{
+            name: String,
+            version: String,
+            ecosystem: String,
+            type: String
+        }],
+        development: [{
+            name: String,
+            version: String,
+            ecosystem: String,
+            type: String
+        }],
+        totalCount: Number,
+        ecosystems: [String]
+    },
+
+    analyzedAt: Date,
+
+    // Legacy Tech Stack (Day 1-3, kept for backward compatibility)
     techStack: {
         language: String,
         runtime: String,
@@ -94,6 +139,7 @@ ProjectSchema.index({ repoUrl: 1 });
 ProjectSchema.index({ status: 1 });
 ProjectSchema.index({ createdAt: -1 });
 ProjectSchema.index({ cloneStatus: 1 });
+ProjectSchema.index({ analysisStatus: 1 });
 ProjectSchema.index({ jobId: 1 });
 
 // Virtual for repository identifier
