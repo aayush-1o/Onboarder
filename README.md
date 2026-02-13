@@ -22,11 +22,11 @@
 <table>
 <tr>
 <td><strong>Current Phase</strong></td>
-<td>Day 3 Complete ✅</td>
+<td>Day 4 Complete ✅</td>
 </tr>
 <tr>
 <td><strong>MVP Timeline</strong></td>
-<td>10 Days (Day 4 Next)</td>
+<td>10 Days (40% Complete)</td>
 </tr>
 <tr>
 <td><strong>Tech Stack</strong></td>
@@ -34,7 +34,7 @@
 </tr>
 <tr>
 <td><strong>Version</strong></td>
-<td>0.3.0 (Day 3)</td>
+<td>0.4.0 (Day 4)</td>
 </tr>
 </table>
 
@@ -75,7 +75,7 @@ graph LR
 
 ## ✨ Key Features
 
-### Currently Implemented (Day 1-3)
+### Currently Implemented (Days 1-4)
 
 | Feature | Description | Status |
 |---------|-------------|--------|
@@ -83,16 +83,17 @@ graph LR
 | 📦 **Repository Cloning** | Clone GitHub repos with progress tracking | ✅ Complete |
 | 🔄 **Background Jobs** | Async processing with retry mechanism | ✅ Complete |
 | 📊 **Real-time Logs** | Track every step of the onboarding process | ✅ Complete |
-| 🌐 **REST API** | Full-featured API with 10+ endpoints | ✅ Complete |
+| 🌐 **REST API** | Full-featured API with 14+ endpoints | ✅ Complete |
 | 💾 **Workspace Management** | Organized file system with size limits | ✅ Complete |
+| 🔍 **Code Analysis** | Detect languages, frameworks, and dependencies | ✅ Complete |
+| 🏷️ **Tech Stack Detection** | Identify 20+ languages, 15+ frameworks | ✅ Complete |
+| 📦 **Dependency Parsing** | Parse npm, pip, maven, go, gem, composer, nuget | ✅ Complete |
 
-### Coming Soon (Days 4-10)
+### Coming Soon (Days 5-10)
 
 | Feature | Description | Timeline |
 |---------|-------------|----------|
-| 🔍 **Tech Stack Detection** | Automatic language/framework identification | Day 4 |
-| 📚 **Dependency Analysis** | Parse package files and detect requirements | Day 5 |
-| 🐳 **Dockerfile Generation** | Create optimized Docker configurations | Day 6 |
+| 🐳 **Dockerfile Generation** | Create optimized Docker configurations | Days 5-6 |
 | 🎼 **Docker Compose** | Multi-service orchestration | Day 7 |
 | 🎨 **Web UI** | Visual interface for management | Days 8-9 |
 | 🚀 **Container Execution** | One-click environment launch | Day 10 |
@@ -232,6 +233,41 @@ Invoke-RestMethod -Uri "http://localhost:5000/api/projects/{id}/workspace"
 
 **See full testing guide:** [DAY3_TESTING_GUIDE.md](./DAY3_TESTING_GUIDE.md)
 
+### Day 4: Analyze Tech Stack (New!)
+
+```powershell
+# After cloning, analysis runs automatically
+# Get complete analysis results
+Invoke-RestMethod -Uri "http://localhost:5000/api/projects/{id}/analysis"
+
+# Get just the tech stack summary
+Invoke-RestMethod -Uri "http://localhost:5000/api/projects/{id}/tech-stack"
+
+# Get dependencies
+Invoke-RestMethod -Uri "http://localhost:5000/api/projects/{id}/dependencies"
+```
+
+**Example Output:**
+```json
+{
+  "primaryLanguage": "JavaScript",
+  "languages": [
+    { "name": "JavaScript", "percentage": 85.5 }
+  ],
+  "frameworks": ["Express.js", "React"],
+  "databases": ["MongoDB"],
+  "dependencies": 24
+}
+```
+
+**Supported Technologies:**
+- **Languages**: JavaScript, TypeScript, Python, Java, Go, Ruby, PHP, C#, C++, Rust, Swift, Kotlin, and 8 more
+- **Frameworks**: Express, React, Next.js, Django, Flask, Spring Boot, Rails, Laravel, and 7 more
+- **Package Managers**: npm, pip, maven, gradle, go modules, gem, composer
+
+**See Day 4 testing guide:** [DAY4_TESTING_GUIDE.md](./DAY4_TESTING_GUIDE.md)
+
+
 ---
 
 ## 📡 API Reference
@@ -253,6 +289,15 @@ Invoke-RestMethod -Uri "http://localhost:5000/api/projects/{id}/workspace"
 | `GET` | `/api/projects/:id/clone-status` | Real-time clone progress |
 | `POST` | `/api/projects/:id/reclone` | Re-clone repository |
 | `GET` | `/api/projects/:id/workspace` | Workspace info & size |
+
+### Code Analysis (Day 4)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/projects/:id/analysis` | Complete code analysis results |
+| `POST` | `/api/projects/:id/analyze` | Trigger manual analysis |
+| `GET` | `/api/projects/:id/dependencies` | Get dependency list |
+| `GET` | `/api/projects/:id/tech-stack` | Get tech stack summary |
 
 ### Logs & Status
 
@@ -281,10 +326,15 @@ onboarder/
 │   │   ├── githubService.js    # GitHub API integration
 │   │   ├── repoCloneService.js # ✨ Git cloning (Day 3)
 │   │   ├── jobQueue.js         # ✨ Background jobs (Day 3)
-│   │   └── projectService.js   # ✨ Project orchestration (Day 3)
+│   │   ├── projectService.js   # ✨ Project orchestration (Day 3)
+│   │   └── codeAnalysisService.js # ⚡ Code analysis (Day 4)
+│   ├── 📂 parsers/             # ⚡ Dependency parsers (Day 4)
+│   │   └── dependencyParser.js # Parse npm, pip, maven, etc.
 │   ├── 📂 utils/               # Utility functions
 │   │   ├── asyncHandler.js     # Async error handling
-│   │   └── fileSystem.js       # ✨ File operations (Day 3)
+│   │   ├── fileSystem.js       # ✨ File operations (Day 3)
+│   │   ├── languageDetector.js # ⚡ Language detection (Day 4)
+│   │   └── frameworkDetector.js # ⚡ Framework detection (Day 4)
 │   └── 📄 server.js            # Express app entry point
 │
 ├── 📂 frontend/                # React frontend (WIP)
