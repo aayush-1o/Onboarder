@@ -1,0 +1,68 @@
+# Python Dockerfile Template
+# Multi-stage build for production optimization
+
+# Stage 1: Build
+FROM {{BASE_IMAGE}} AS builder
+WORKDIR {{WORKDIR}}
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+{{#if HAS_POETRY}}
+COPY pyproject.toml poetry.lock ./
+RUN pip install poetry && \
+    poetry config virtualenvs.create false && \
+    poetry install --no-dev --no-interaction --no-ansi
+{{else if HAS_PIPENV}}
+COPY Pipfile Pipfile.lock ./
+RUN pip install pipenv && \
+    pipenv install --deploy --system
+{{else}}
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --user -r requirements.txt
+{{/if}}
+
+# Stage 2: Production
+FROM {{BASE_IMAGE}}-slim AS runner
+WORKDIR {{WORKDIR}}
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/home/appuser/.local/bin:$PATH"
+{{#each ENV_VARS}}
+ENV {{key}}={{value}}
+{{/each}}
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash appuser
+
+# Copy Python packages from builder
+COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
+
+# Copy application code
+COPY --chown=appuser:appuser . .
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE {{PORT}}
+
+# Health check
+{{#if HEALTH_CHECK_ENDPOINT}}
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:{{PORT}}{{HEALTH_CHECK_ENDPOINT}}').getcode() == 200"
+{{/if}}
+
+# Run application
+{{#if IS_DJANGO}}
+CMD ["gunicorn", "{{PROJECT_NAME}}.wsgi:application", "--bind", "0.0.0.0:{{PORT}}", "--workers", "{{WORKERS}}"]
+{{else if IS_FLASK}}
+CMD ["gunicorn", "--bind", "0.0.0.0:{{PORT}}", "{{APP_MODULE}}:app"]
+{{else}}
+CMD [{{START_COMMAND}}]
+{{/if}}

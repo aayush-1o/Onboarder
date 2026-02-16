@@ -1,0 +1,48 @@
+# Go Dockerfile Template
+# Multi-stage build for minimal production image
+
+# Stage 1: Build
+FROM golang:{{GO_VERSION}}-alpine AS builder
+WORKDIR {{WORKDIR}}
+
+# Install dependencies
+RUN apk add --no-cache git
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build binary with optimizations
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -ldflags="-w -s" -o /app/main {{MAIN_PACKAGE}}
+
+# Stage 2: Production (minimal scratch or alpine)
+FROM alpine:latest AS runner
+WORKDIR /app
+
+# Install ca-certificates for HTTPS
+RUN apk --no-cache add ca-certificates
+
+# Create non-root user
+RUN addgroup -S appuser && adduser -S appuser -G appuser
+
+# Copy binary from builder
+COPY --from=builder --chown=appuser:appuser /app/main .
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE {{PORT}}
+
+# Health check
+{{#if HEALTH_CHECK_ENDPOINT}}
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:{{PORT}}{{HEALTH_CHECK_ENDPOINT}} || exit 1
+{{/if}}
+
+# Run application
+CMD ["./main"]

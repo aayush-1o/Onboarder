@@ -1,0 +1,71 @@
+# Ruby/Rails Dockerfile Template
+# Multi-stage build for production optimization
+
+# Stage 1: Build
+FROM ruby:{{RUBY_VERSION}}-alpine AS builder
+WORKDIR {{WORKDIR}}
+
+# Install build dependencies
+RUN apk add --no-cache \
+    build-base \
+    postgresql-dev \
+    nodejs \
+    yarn \
+    tzdata
+
+# Copy Gemfile
+COPY Gemfile Gemfile.lock ./
+RUN bundle config set --local deployment 'true' && \
+    bundle config set --local without 'development test' && \
+    bundle install
+
+# Copy application
+COPY . .
+
+# Precompile assets (for Rails)
+{{#if IS_RAILS}}
+RUN bundle exec rails assets:precompile
+{{/if}}
+
+# Stage 2: Production
+FROM ruby:{{RUBY_VERSION}}-alpine AS runner
+WORKDIR {{WORKDIR}}
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    postgresql-client \
+    tzdata \
+    nodejs
+
+# Set environment
+ENV RAILS_ENV=production \
+    RACK_ENV=production
+{{#each ENV_VARS}}
+ENV {{key}}={{value}}
+{{/each}}
+
+# Create non-root user
+RUN addgroup -S appuser && adduser -S appuser -G appuser
+
+# Copy gems and app from builder
+COPY --from=builder --chown=appuser:appuser /usr/local/bundle /usr/local/bundle
+COPY --from=builder --chown=appuser:appuser {{WORKDIR}} {{WORKDIR}}
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE {{PORT}}
+
+# Health check
+{{#if HEALTH_CHECK_ENDPOINT}}
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:{{PORT}}{{HEALTH_CHECK_ENDPOINT}} || exit 1
+{{/if}}
+
+# Run application
+{{#if IS_RAILS}}
+CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]
+{{else}}
+CMD [{{START_COMMAND}}]
+{{/if}}

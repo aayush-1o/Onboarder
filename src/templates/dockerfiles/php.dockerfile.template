@@ -1,0 +1,48 @@
+# PHP Dockerfile Template
+# Multi-stage build with PHP-FPM and nginx
+
+# Stage 1: Composer dependencies
+FROM composer:{{COMPOSER_VERSION}} AS composer
+WORKDIR {{WORKDIR}}
+
+# Copy composer files
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+
+# Copy application and generate autoloader
+COPY . .
+RUN composer dump-autoload --optimize --classmap-authoritative
+
+# Stage 2: Production with PHP-FPM
+FROM php:{{PHP_VERSION}}-fpm-alpine AS runner
+WORKDIR {{WORKDIR}}
+
+# Install PHP extensions
+RUN apk add --no-cache \
+    nginx \
+    && docker-php-ext-install pdo pdo_mysql opcache
+
+# Configure PHP for production
+COPY docker/php.ini /usr/local/etc/php/conf.d/custom.ini
+
+# Copy nginx configuration
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+
+# Create non-root user
+RUN addgroup -S appuser && adduser -S appuser -G appuser
+
+# Copy application from composer stage
+COPY --from=composer --chown=appuser:appuser {{WORKDIR}} {{WORKDIR}}
+
+# Set permissions
+RUN chown -R appuser:appuser /var/lib/nginx /var/log/nginx
+
+# Expose port
+EXPOSE {{PORT}}
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD php-fpm-healthcheck || exit 1
+
+# Start PHP-FPM and nginx
+CMD php-fpm -D && nginx -g 'daemon off;'

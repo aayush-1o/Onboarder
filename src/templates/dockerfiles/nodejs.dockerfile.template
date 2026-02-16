@@ -1,0 +1,76 @@
+# Node.js Dockerfile Template
+# Multi-stage build for production optimization
+
+# Stage 1: Dependencies
+FROM {{BASE_IMAGE}} AS deps
+WORKDIR {{WORKDIR}}
+
+# Copy package files
+COPY package*.json ./
+{{#if YARN_LOCK}}
+COPY yarn.lock ./
+{{/if}}
+{{#if PNPM_LOCK}}
+COPY pnpm-lock.yaml ./
+{{/if}}
+
+# Install dependencies
+{{#if USE_YARN}}
+RUN yarn install --frozen-lockfile --production=false
+{{else if USE_PNPM}}
+RUN npm install -g pnpm && pnpm install --frozen-lockfile
+{{else}}
+RUN npm ci
+{{/if}}
+
+# Stage 2: Build
+FROM {{BASE_IMAGE}} AS builder
+WORKDIR {{WORKDIR}}
+
+# Copy dependencies from deps stage
+COPY --from=deps {{WORKDIR}}/node_modules ./node_modules
+COPY . .
+
+# Build application (if build script exists)
+{{#if HAS_BUILD_SCRIPT}}
+RUN {{BUILD_COMMAND}}
+{{/if}}
+
+# Stage 3: Production
+FROM {{BASE_IMAGE}} AS runner
+WORKDIR {{WORKDIR}}
+
+# Set production environment
+ENV NODE_ENV=production
+{{#each ENV_VARS}}
+ENV {{key}}={{value}}
+{{/each}}
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 appuser
+
+# Copy necessary files
+{{#if HAS_BUILD_SCRIPT}}
+COPY --from=builder --chown=appuser:nodejs {{WORKDIR}}/dist ./dist
+COPY --from=builder --chown=appuser:nodejs {{WORKDIR}}/node_modules ./node_modules
+{{else}}
+COPY --from=deps --chown=appuser:nodejs {{WORKDIR}}/node_modules ./node_modules
+COPY --chown=appuser:nodejs . .
+{{/if}}
+COPY --chown=appuser:nodejs package*.json ./
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE {{PORT}}
+
+# Health check
+{{#if HEALTH_CHECK_ENDPOINT}}
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:{{PORT}}{{HEALTH_CHECK_ENDPOINT}}', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+{{/if}}
+
+# Start application
+CMD [{{START_COMMAND}}]
