@@ -28,8 +28,9 @@ const JobStatus = {
 // Job type enum
 const JobType = {
     CLONE: 'clone',
-    ANALYZE: 'analyze', // Placeholder for Day 4
-    BUILD: 'build'      // Placeholder for Days 6-7
+    BUILD: 'build',
+    ANALYZE: 'analyze',
+    GENERATE_DOCKERFILE: 'generate_dockerfile'
 };
 
 /**
@@ -142,6 +143,10 @@ async function processJob(jobId) {
 
             case JobType.ANALYZE:
                 result = await executeAnalyzeJob(job.data);
+                break;
+
+            case JobType.GENERATE_DOCKERFILE: // Day 5
+                result = await executeDockerfileGenerationJob(job.data);
                 break;
 
             case JobType.BUILD:
@@ -296,6 +301,15 @@ async function executeAnalyzeJob(data) {
     project.analyzedAt = new Date();
     await project.save();
 
+    console.log(`✓ Analysis completed for project ${projectId}`);
+
+    // Day 5: Trigger Dockerfile generation after successful analysis
+    console.log(`→ Triggering Dockerfile generation for project ${projectId}`);
+    addJob(JobType.GENERATE_DOCKERFILE, {
+        projectId,
+        projectPath
+    });
+
     return analysisResult.data;
 }
 
@@ -389,6 +403,62 @@ function getQueueStats() {
 setInterval(() => {
     clearCompletedJobs();
 }, 600000);
+
+/**
+ * Execute Dockerfile generation job (Day 5)
+ */
+async function executeDockerfileGenerationJob(data) {
+    const { projectId, projectPath } = data;
+    const dockerfileGeneratorService = require('./dockerfileGeneratorService');
+
+    console.log(`→ Generating Dockerfile for project ${projectId}...`);
+
+    try {
+        // Update status to generating
+        await Project.findByIdAndUpdate(projectId, {
+            dockerfileStatus: 'generating'
+        });
+
+        await BuildLog.createLog(projectId, 'dockerfile', 'Starting Dockerfile generation', {
+            level: 'info',
+            details: { projectPath }
+        });
+
+        // Generate Dockerfile
+        const result = await dockerfileGeneratorService.generateDockerfile(projectId);
+
+        if (!result.success) {
+            throw new Error('Dockerfile generation failed');
+        }
+
+        await BuildLog.createLog(projectId, 'dockerfile', 'Dockerfile generated successfully', {
+            level: 'info',
+            details: {
+                baseImage: result.dockerfile.baseImage,
+                port: result.config.port,
+                strategy: result.dockerfile.strategy
+            }
+        });
+
+        console.log(`✓ Dockerfile generated for project ${projectId}`);
+
+        return result;
+
+    } catch (error) {
+        console.error(`✗ Dockerfile generation failed for project ${projectId}:`, error.message);
+
+        await BuildLog.createLog(projectId, 'dockerfile', `Generation failed: ${error.message}`, {
+            level: 'error',
+            details: { error: error.stack }
+        });
+
+        await Project.findByIdAndUpdate(projectId, {
+            dockerfileStatus: 'failed'
+        });
+
+        throw error;
+    }
+}
 
 module.exports = {
     addJob,

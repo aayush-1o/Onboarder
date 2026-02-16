@@ -83,6 +83,37 @@ const ProjectSchema = new mongoose.Schema({
 
     analyzedAt: Date,
 
+    // Dockerfile Generation (New - Day 5)
+    dockerfileStatus: {
+        type: String,
+        enum: ['pending', 'generating', 'generated', 'failed'],
+        default: 'pending'
+    },
+
+    dockerfile: {
+        generated: Boolean,
+        content: String,
+        baseImage: String,
+        strategy: String,  // 'single-stage' or 'multi-stage'
+        optimizations: [String],
+        generatedAt: Date
+    },
+
+    dockerConfig: {
+        port: Number,
+        environmentVars: [{
+            key: String,
+            value: String,
+            required: Boolean
+        }],
+        volumes: [String],
+        healthCheck: {
+            enabled: Boolean,
+            endpoint: String,
+            interval: String
+        }
+    },
+
     // Legacy Tech Stack (Day 1-3, kept for backward compatibility)
     techStack: {
         language: String,
@@ -139,7 +170,8 @@ ProjectSchema.index({ repoUrl: 1 });
 ProjectSchema.index({ status: 1 });
 ProjectSchema.index({ createdAt: -1 });
 ProjectSchema.index({ cloneStatus: 1 });
-ProjectSchema.index({ analysisStatus: 1 });
+ProjectSchema.index({ analysisStatus: 1 }); // Day 4
+ProjectSchema.index({ dockerfileStatus: 1 }); // Day 5
 ProjectSchema.index({ jobId: 1 });
 
 // Virtual for repository identifier

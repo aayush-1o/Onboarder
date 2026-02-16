@@ -1,0 +1,45 @@
+# Java Maven Dockerfile Template
+# Multi-stage build for production optimization
+
+# Stage 1: Build
+FROM maven:{{JAVA_VERSION}}-{{MAVEN_IMAGE}} AS builder
+WORKDIR {{WORKDIR}}
+
+# Copy pom.xml and download dependencies (cached layer)
+COPY pom.xml ./
+RUN mvn dependency:go-offline -B
+
+# Copy source and build
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+# Stage 2: Production
+FROM openjdk:{{JAVA_VERSION}}-jre-slim AS runner
+WORKDIR {{WORKDIR}}
+
+# Set environment variables
+ENV JAVA_OPTS="{{JAVA_OPTS}}"
+{{#each ENV_VARS}}
+ENV {{key}}={{value}}
+{{/each}}
+
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Copy JAR from builder
+COPY --from=builder --chown=appuser:appuser {{WORKDIR}}/target/*.jar app.jar
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE {{PORT}}
+
+# Health check
+{{#if HEALTH_CHECK_ENDPOINT}}
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:{{PORT}}{{HEALTH_CHECK_ENDPOINT}} || exit 1
+{{/if}}
+
+# Run application
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

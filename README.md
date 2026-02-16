@@ -22,11 +22,11 @@
 <table>
 <tr>
 <td><strong>Current Phase</strong></td>
-<td>Day 4 Complete ✅</td>
+<td>Day 5 Complete ✅</td>
 </tr>
 <tr>
 <td><strong>MVP Timeline</strong></td>
-<td>10 Days (40% Complete)</td>
+<td>10 Days (50% Complete)</td>
 </tr>
 <tr>
 <td><strong>Tech Stack</strong></td>
@@ -34,7 +34,7 @@
 </tr>
 <tr>
 <td><strong>Version</strong></td>
-<td>0.4.0 (Day 4)</td>
+<td>0.5.0 (Day 5)</td>
 </tr>
 </table>
 
@@ -75,26 +75,27 @@ graph LR
 
 ## ✨ Key Features
 
-### Currently Implemented (Days 1-4)
+### Currently Implemented (Days 1-5)
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| 🗄️ **Project Management** | Create, track, and manage onboarding projects | ✅ Complete |
+| 🗂️ **Project Management** | Create, track, and manage onboarding projects | ✅ Complete |
 | 📦 **Repository Cloning** | Clone GitHub repos with progress tracking | ✅ Complete |
 | 🔄 **Background Jobs** | Async processing with retry mechanism | ✅ Complete |
 | 📊 **Real-time Logs** | Track every step of the onboarding process | ✅ Complete |
-| 🌐 **REST API** | Full-featured API with 14+ endpoints | ✅ Complete |
+| 🌐 **REST API** | Full-featured API with 18+ endpoints | ✅ Complete |
 | 💾 **Workspace Management** | Organized file system with size limits | ✅ Complete |
 | 🔍 **Code Analysis** | Detect languages, frameworks, and dependencies | ✅ Complete |
 | 🏷️ **Tech Stack Detection** | Identify 20+ languages, 15+ frameworks | ✅ Complete |
 | 📦 **Dependency Parsing** | Parse npm, pip, maven, go, gem, composer, nuget | ✅ Complete |
+| 🐳 **Dockerfile Generation** | Auto-generate production-ready Dockerfiles | ✅ Complete |
+| 📝 **Multi-Stage Builds** | Optimized Docker images with security best practices | ✅ Complete |
 
-### Coming Soon (Days 5-10)
+### Coming Soon (Days 6-10)
 
 | Feature | Description | Timeline |
 |---------|-------------|----------|
-| 🐳 **Dockerfile Generation** | Create optimized Docker configurations | Days 5-6 |
-| 🎼 **Docker Compose** | Multi-service orchestration | Day 7 |
+| 🎼 **Docker Compose** | Multi-service orchestration | Days 6-7 |
 | 🎨 **Web UI** | Visual interface for management | Days 8-9 |
 | 🚀 **Container Execution** | One-click environment launch | Day 10 |
 
@@ -267,6 +268,45 @@ Invoke-RestMethod -Uri "http://localhost:5000/api/projects/{id}/dependencies"
 
 **See Day 4 testing guide:** [DAY4_TESTING_GUIDE.md](./DAY4_TESTING_GUIDE.md)
 
+### Day 5: Generate Dockerfile (New!)
+
+```powershell
+# Dockerfile is auto-generated after analysis
+# Get the generated Dockerfile
+Invoke-RestMethod -Uri "http://localhost:5000/api/projects/{id}/dockerfile"
+
+# Get Docker configuration (port, env vars, etc.)
+Invoke-RestMethod -Uri "http://localhost:5000/api/projects/{id}/docker-config"
+
+# Manually trigger Dockerfile generation
+Invoke-RestMethod -Uri "http://localhost:5000/api/projects/{id}/generate-dockerfile" -Method POST
+```
+
+**Example Generated Dockerfile:**
+```dockerfile
+FROM node:18-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+
+FROM node:18-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+EXPOSE 3000
+CMD ["node", "server.js"]
+```
+
+**Features:**
+- **Multi-stage builds** for minimal image size
+- **7 language templates**: Node.js, Python, Java, Go, Ruby, PHP
+- **Security**: Non-root user, minimal base images
+- **Health checks**: Framework-specific endpoints
+- **Auto-detection**: Package managers (npm/yarn/pnpm), build tools
+
+**See Day 5 testing guide:** [DAY5_TESTING_GUIDE.md](./DAY5_TESTING_GUIDE.md)
+
 
 ---
 
@@ -298,6 +338,17 @@ Invoke-RestMethod -Uri "http://localhost:5000/api/projects/{id}/dependencies"
 | `POST` | `/api/projects/:id/analyze` | Trigger manual analysis |
 | `GET` | `/api/projects/:id/dependencies` | Get dependency list |
 | `GET` | `/api/projects/:id/tech-stack` | Get tech stack summary |
+
+router.get('/:id/tech-stack', asyncHandler(async (req, res) => {
+
+### Dockerfile Generation (Day 5)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/projects/:id/dockerfile` | Get generated Dockerfile content |
+| `POST` | `/api/projects/:id/generate-dockerfile` | Manually trigger Dockerfile generation |
+| `PUT` | `/api/projects/:id/dockerfile` | Update Dockerfile with custom content |
+| `GET` | `/api/projects/:id/docker-config` | Get Docker config (port, env vars, volumes) |
 
 ### Logs & Status
 

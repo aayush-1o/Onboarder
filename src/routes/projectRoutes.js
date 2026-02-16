@@ -374,4 +374,169 @@ router.get('/:id/tech-stack', asyncHandler(async (req, res) => {
     });
 }));
 
+// ========== Day 5: Dockerfile Generation Endpoints ==========
+
+/**
+ * @route   GET /api/projects/:id/dockerfile
+ * @desc    Get generated Dockerfile content
+ * @access  Public
+ */
+router.get('/:id/dockerfile', asyncHandler(async (req, res) => {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+        return res.status(404).json({
+            success: false,
+            error: 'Project not found'
+        });
+    }
+
+    if (!project.dockerfile || !project.dockerfile.generated) {
+        return res.status(400).json({
+            success: false,
+            error: 'Dockerfile not generated yet',
+            dockerfileStatus: project.dockerfileStatus
+        });
+    }
+
+    res.json({
+        success: true,
+        data: {
+            content: project.dockerfile.content,
+            baseImage: project.dockerfile.baseImage,
+            strategy: project.dockerfile.strategy,
+            optimizations: project.dockerfile.optimizations,
+            generatedAt: project.dockerfile.generatedAt,
+            dockerfileStatus: project.dockerfileStatus
+        }
+    });
+}));
+
+/**
+ * @route   POST /api/projects/:id/generate-dockerfile
+ * @desc    Trigger Dockerfile generation manually
+ * @access  Public
+ */
+router.post('/:id/generate-dockerfile', asyncHandler(async (req, res) => {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+        return res.status(404).json({
+            success: false,
+            error: 'Project not found'
+        });
+    }
+
+    // Check if analysis is complete
+    if (project.analysisStatus !== 'completed') {
+        return res.status(400).json({
+            success: false,
+            error: 'Project analysis must be completed before generating Dockerfile',
+            analysisStatus: project.analysisStatus
+        });
+    }
+
+    // Trigger Dockerfile generation job
+    const jobId = jobQueue.addJob(jobQueue.JobType.GENERATE_DOCKERFILE, {
+        projectId: project._id,
+        projectPath: project.workspacePath
+    });
+
+    res.json({
+        success: true,
+        message: 'Dockerfile generation started',
+        data: {
+            jobId,
+            projectId: project._id,
+            dockerfileStatus: 'generating'
+        }
+    });
+}));
+
+/**
+ * @route   PUT /api/projects/:id/dockerfile
+ * @desc    Update Dockerfile with custom content
+ * @access  Public
+ */
+router.put('/:id/dockerfile', asyncHandler(async (req, res) => {
+    const { content } = req.body;
+
+    if (!content) {
+        return res.status(400).json({
+            success: false,
+            error: 'Dockerfile content is required'
+        });
+    }
+
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+        return res.status(404).json({
+            success: false,
+            error: 'Project not found'
+        });
+    }
+
+    // Update Dockerfile content
+    project.dockerfile = project.dockerfile || {};
+    project.dockerfile.content = content;
+    project.dockerfile.generated = true;
+    project.dockerfile.generatedAt = new Date();
+    project.dockerfileStatus = 'generated';
+
+    await project.save();
+
+    // Also update file in workspace
+    const fs = require('fs').promises;
+    const path = require('path');
+    if (project.workspacePath) {
+        const dockerfilePath = path.join(project.workspacePath, 'Dockerfile');
+        await fs.writeFile(dockerfilePath, content, 'utf-8');
+    }
+
+    res.json({
+        success: true,
+        message: 'Dockerfile updated successfully',
+        data: {
+            content: project.dockerfile.content,
+            generatedAt: project.dockerfile.generatedAt
+        }
+    });
+}));
+
+/**
+ * @route   GET /api/projects/:id/docker-config
+ * @desc    Get Docker configuration (ports, env vars, volumes)
+ * @access  Public
+ */
+router.get('/:id/docker-config', asyncHandler(async (req, res) => {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+        return res.status(404).json({
+            success: false,
+            error: 'Project not found'
+        });
+    }
+
+    if (!project.dockerConfig) {
+        return res.status(400).json({
+            success: false,
+            error: 'Docker configuration not available yet',
+            dockerfileStatus: project.dockerfileStatus
+        });
+    }
+
+    res.json({
+        success: true,
+        data: {
+            port: project.dockerConfig.port,
+            environmentVars: project.dockerConfig.environmentVars,
+            volumes: project.dockerConfig.volumes,
+            healthCheck: project.dockerConfig.healthCheck,
+            baseImage: project.dockerfile?.baseImage
+        }
+    });
+}));
+
 module.exports = router;
