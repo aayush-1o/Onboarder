@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  {{APP_SERVICE_NAME}}:
+    build: .
+    container_name: {{CONTAINER_NAME}}
+    ports:
+      - "{{APP_PORT}}:{{APP_PORT}}"
+    environment:
+      - NODE_ENV={{NODE_ENV}}
+      - PORT={{APP_PORT}}
+      {{#each ENV_VARS}}
+      - {{key}}={{value}}
+      {{/each}}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - {{NETWORK_NAME}}
+
+networks:
+  {{NETWORK_NAME}}:
+    driver: bridge

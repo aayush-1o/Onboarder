@@ -30,7 +30,8 @@ const JobType = {
     CLONE: 'clone',
     BUILD: 'build',
     ANALYZE: 'analyze',
-    GENERATE_DOCKERFILE: 'generate_dockerfile'
+    GENERATE_DOCKERFILE: 'generate_dockerfile',
+    GENERATE_COMPOSE: 'generate_compose'  // Day 6 (New)
 };
 
 /**
@@ -147,6 +148,10 @@ async function processJob(jobId) {
 
             case JobType.GENERATE_DOCKERFILE: // Day 5
                 result = await executeDockerfileGenerationJob(job.data);
+                break;
+
+            case JobType.GENERATE_COMPOSE:  // Day 6 (New)
+                result = await executeComposeGenerationJob(job.data);
                 break;
 
             case JobType.BUILD:
@@ -433,11 +438,14 @@ async function executeDockerfileGenerationJob(data) {
 
         await BuildLog.createLog(projectId, 'dockerfile', 'Dockerfile generated successfully', {
             level: 'info',
-            details: {
-                baseImage: result.dockerfile.baseImage,
-                port: result.config.port,
-                strategy: result.dockerfile.strategy
-            }
+            details: { path: result.dockerfilePath } // Assuming result.dockerfilePath exists
+        });
+
+        // Day 6: Auto-trigger Docker Compose generation after Dockerfile
+        console.log(`→ Triggering Docker Compose generation for project ${projectId}`);
+        addJob(JobType.GENERATE_COMPOSE, {
+            projectId,
+            projectPath
         });
 
         console.log(`✓ Dockerfile generated for project ${projectId}`);
@@ -454,6 +462,66 @@ async function executeDockerfileGenerationJob(data) {
 
         await Project.findByIdAndUpdate(projectId, {
             dockerfileStatus: 'failed'
+        });
+
+        throw error;
+    }
+}
+
+/**
+ * Execute Docker Compose generation job (Day 6)
+ */
+async function executeComposeGenerationJob(data) {
+    const { projectId, projectPath } = data;
+
+    console.log(`\n========== DOCKER COMPOSE GENERATION JOB ==========`);
+    console.log(`Project ID: ${projectId}`);
+    console.log(`Project Path: ${projectPath}`);
+
+    try {
+        // Update status
+        await Project.findByIdAndUpdate(projectId, {
+            dockerComposeStatus: 'generating'
+        });
+
+        await BuildLog.createLog(projectId, 'docker-compose', 'Starting Docker Compose generation', {
+            level: 'info'
+        });
+
+        // Generate docker-compose.yml
+        const dockerComposeService = require('./dockerComposeService');
+        const result = await dockerComposeService.generateDockerCompose(projectId);
+
+        console.log(`✅ Docker Compose generated successfully`);
+        console.log(`   Services: ${result.dockerCompose.services.map(s => s.name).join(', ')}`);
+        console.log(`   Volumes: ${result.dockerCompose.volumes.length}`);
+        console.log(`   Networks: ${result.dockerCompose.networks.length}`);
+
+        await BuildLog.createLog(projectId, 'docker-compose', 'Docker Compose generated successfully', {
+            level: 'info',
+            details: {
+                services: result.dockerCompose.services.length,
+                volumes: result.dockerCompose.volumes.length
+            }
+        });
+
+        return {
+            success: true,
+            dockerCompose: result.dockerCompose,
+            services: result.services
+        };
+
+    } catch (error) {
+        console.error(`❌ Docker Compose generation failed:`, error.message);
+
+        await Project.findByIdAndUpdate(projectId, {
+            dockerComposeStatus: 'failed',
+            errorMessage: error.message
+        });
+
+        await BuildLog.createLog(projectId, 'docker-compose', `Generation failed: ${error.message}`, {
+            level: 'error',
+            details: { error: error.stack }
         });
 
         throw error;

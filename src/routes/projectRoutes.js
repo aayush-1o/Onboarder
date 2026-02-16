@@ -539,4 +539,184 @@ router.get('/:id/docker-config', asyncHandler(async (req, res) => {
     });
 }));
 
+// ========== Day 6: Docker Compose Generation Endpoints ==========
+
+// GET /api/projects/:id/docker-compose - Get generated docker-compose.yml
+router.get('/:id/docker-compose', asyncHandler(async (req, res) => {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+        return res.status(404).json({
+            success: false,
+            message: 'Project not found'
+        });
+    }
+
+    if (!project.dockerCompose || !project.dockerCompose.generated) {
+        return res.status(404).json({
+            success: false,
+            message: 'Docker Compose not generated yet',
+            dockerComposeStatus: project.dockerComposeStatus
+        });
+    }
+
+    res.json({
+        success: true,
+        data: {
+            content: project.dockerCompose.content,
+            services: project.dockerCompose.services,
+            volumes: project.dockerCompose.volumes,
+            networks: project.dockerCompose.networks,
+            generatedAt: project.dockerCompose.generatedAt,
+            dockerComposeStatus: project.dockerComposeStatus
+        }
+    });
+}));
+
+// POST /api/projects/:id/generate-compose - Manually trigger Docker Compose generation
+router.post('/:id/generate-compose', asyncHandler(async (req, res) => {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+        return res.status(404).json({
+            success: false,
+            message: 'Project not found'
+        });
+    }
+
+    // Check if Dockerfile exists
+    if (!project.dockerfile || !project.dockerfile.generated) {
+        return res.status(400).json({
+            success: false,
+            message: 'Dockerfile must be generated first'
+        });
+    }
+
+    // Add job to queue
+    const { addJob } = require('../services/jobQueue');
+    const jobId = addJob('generate_compose', {
+        projectId: project._id.toString(),
+        projectPath: project.workspacePath
+    });
+
+    // Update status
+    project.dockerComposeStatus = 'generating';
+    await project.save();
+
+    res.json({
+        success: true,
+        message: 'Docker Compose generation started',
+        data: {
+            jobId,
+            projectId: project._id,
+            dockerComposeStatus: project.dockerComposeStatus
+        }
+    });
+}));
+
+// PUT /api/projects/:id/docker-compose - Update docker-compose.yml content
+router.put('/:id/docker-compose', asyncHandler(async (req, res) => {
+    const { content } = req.body;
+
+    if (!content) {
+        return res.status(400).json({
+            success: false,
+            message: 'Content is required'
+        });
+    }
+
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+        return res.status(404).json({
+            success: false,
+            message: 'Project not found'
+        });
+    }
+
+    // Update docker-compose content
+    project.dockerCompose = project.dockerCompose || {};
+    project.dockerCompose.content = content;
+    project.dockerCompose.generated = true;
+    project.dockerComposeStatus = 'generated';
+
+    await project.save();
+
+    // Also update file on disk
+    const fs = require('fs').promises;
+    const path = require('path');
+    if (project.workspacePath) {
+        const composePath = path.join(project.workspacePath, 'docker-compose.yml');
+        await fs.writeFile(composePath, content, 'utf-8');
+    }
+
+    res.json({
+        success: true,
+        message: 'Docker Compose updated successfully',
+        data: {
+            dockerComposeStatus: project.dockerComposeStatus
+        }
+    });
+}));
+
+// GET /api/projects/:id/services - Get detected services (databases, caches, etc.)
+router.get('/:id/services', asyncHandler(async (req, res) => {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+        return res.status(404).json({
+            success: false,
+            message: 'Project not found'
+        });
+    }
+
+    res.json({
+        success: true,
+        data: {
+            databases: project.services?.databases || [],
+            caches: project.services?.caches || [],
+            messageQueues: project.services?.messageQueues || [],
+            dockerComposeServices: project.dockerCompose?.services || []
+        }
+    });
+}));
+
+// GET /api/projects/:id/docker-run-command - Get ready-to-use docker-compose command
+router.get('/:id/docker-run-command', asyncHandler(async (req, res) => {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+        return res.status(404).json({
+            success: false,
+            message: 'Project not found'
+        });
+    }
+
+    if (!project.dockerCompose || !project.dockerCompose.generated) {
+        return res.status(404).json({
+            success: false,
+            message: 'Docker Compose not generated yet'
+        });
+    }
+
+    const commands = {
+        start: 'docker-compose up -d',
+        startLogs: 'docker-compose up',
+        stop: 'docker-compose down',
+        stopVolumes: 'docker-compose down -v',
+        logs: 'docker-compose logs -f',
+        ps: 'docker-compose ps',
+        build: 'docker-compose build'
+    };
+
+    res.json({
+        success: true,
+        data: {
+            commands,
+            workingDirectory: project.workspacePath,
+            servicesCount: project.dockerCompose.services.length
+        }
+    });
+}));
+
 module.exports = router;

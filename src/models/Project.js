@@ -114,6 +114,43 @@ const ProjectSchema = new mongoose.Schema({
         }
     },
 
+    // Docker Compose Generation (New - Day 6)
+    dockerComposeStatus: {
+        type: String,
+        enum: ['pending', 'generating', 'generated', 'failed'],
+        default: 'pending'
+    },
+
+    dockerCompose: {
+        generated: Boolean,
+        content: String,
+        services: [{
+            name: String,
+            type: String,  // 'app', 'database', 'cache', 'queue'
+            image: String,
+            port: Number
+        }],
+        volumes: [String],
+        networks: [String],
+        generatedAt: Date
+    },
+
+    services: {
+        databases: [{
+            type: String,      // 'mongodb', 'postgresql', 'mysql', 'redis'
+            version: String,
+            port: Number
+        }],
+        caches: [{
+            type: String,
+            port: Number
+        }],
+        messageQueues: [{
+            type: String,
+            port: Number
+        }]
+    },
+
     // Legacy Tech Stack (Day 1-3, kept for backward compatibility)
     techStack: {
         language: String,
@@ -172,6 +209,7 @@ ProjectSchema.index({ createdAt: -1 });
 ProjectSchema.index({ cloneStatus: 1 });
 ProjectSchema.index({ analysisStatus: 1 }); // Day 4
 ProjectSchema.index({ dockerfileStatus: 1 }); // Day 5
+ProjectSchema.index({ dockerComposeStatus: 1 }); // Day 6 (New)
 ProjectSchema.index({ jobId: 1 });
 
 // Virtual for repository identifier
