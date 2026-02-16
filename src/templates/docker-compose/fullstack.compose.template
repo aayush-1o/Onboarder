@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: ./frontend
+    container_name: {{PROJECT_NAME}}-frontend
+    ports:
+      - "{{FRONTEND_PORT}}:{{FRONTEND_PORT}}"
+    environment:
+      - REACT_APP_API_URL=http://backend:{{BACKEND_PORT}}
+      {{#each FRONTEND_ENV_VARS}}
+      - {{key}}={{value}}
+      {{/each}}
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - {{NETWORK_NAME}}
+
+  backend:
+    build: ./backend
+    container_name: {{PROJECT_NAME}}-backend
+    ports:
+      - "{{BACKEND_PORT}}:{{BACKEND_PORT}}"
+    environment:
+      - NODE_ENV={{NODE_ENV}}
+      - PORT={{BACKEND_PORT}}
+      - {{DB_ENV_KEY}}={{DB_CONNECTION_STRING}}
+      {{#each BACKEND_ENV_VARS}}
+      - {{key}}={{value}}
+      {{/each}}
+    depends_on:
+      {{DB_SERVICE_NAME}}:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - {{NETWORK_NAME}}
+
+  {{DB_SERVICE_NAME}}:
+    image: {{DB_IMAGE}}
+    container_name: {{PROJECT_NAME}}-{{DB_SERVICE_NAME}}
+    ports:
+      - "{{DB_PORT}}:{{DB_PORT}}"
+    environment:
+      {{#each DB_ENV_VARS}}
+      - {{key}}={{value}}
+      {{/each}}
+    volumes:
+      - {{DB_VOLUME_NAME}}:{{DB_VOLUME_PATH}}
+    healthcheck:
+      test: {{DB_HEALTH_CHECK}}
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - {{NETWORK_NAME}}
+
+volumes:
+  {{DB_VOLUME_NAME}}:
+    driver: local
+
+networks:
+  {{NETWORK_NAME}}:
+    driver: bridge

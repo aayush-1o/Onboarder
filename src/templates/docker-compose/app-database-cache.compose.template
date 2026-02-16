@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  {{APP_SERVICE_NAME}}:
+    build: .
+    container_name: {{CONTAINER_NAME}}
+    ports:
+      - "{{APP_PORT}}:{{APP_PORT}}"
+    environment:
+      - NODE_ENV={{NODE_ENV}}
+      - PORT={{APP_PORT}}
+      - {{DB_ENV_KEY}}={{DB_CONNECTION_STRING}}
+      - {{CACHE_ENV_KEY}}={{CACHE_CONNECTION_STRING}}
+      {{#each APP_ENV_VARS}}
+      - {{key}}={{value}}
+      {{/each}}
+    depends_on:
+      {{DB_SERVICE_NAME}}:
+        condition: service_healthy
+      {{CACHE_SERVICE_NAME}}:
+        condition: service_started
+    volumes:
+      - .:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - {{NETWORK_NAME}}
+
+  {{DB_SERVICE_NAME}}:
+    image: {{DB_IMAGE}}
+    container_name: {{DB_CONTAINER_NAME}}
+    ports:
+      - "{{DB_PORT}}:{{DB_PORT}}"
+    environment:
+      {{#each DB_ENV_VARS}}
+      - {{key}}={{value}}
+      {{/each}}
+    volumes:
+      - {{DB_VOLUME_NAME}}:{{DB_VOLUME_PATH}}
+    healthcheck:
+      test: {{DB_HEALTH_CHECK}}
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - {{NETWORK_NAME}}
+
+  {{CACHE_SERVICE_NAME}}:
+    image: {{CACHE_IMAGE}}
+    container_name: {{CACHE_CONTAINER_NAME}}
+    ports:
+      - "{{CACHE_PORT}}:{{CACHE_PORT}}"
+    volumes:
+      - {{CACHE_VOLUME_NAME}}:/data
+    restart: unless-stopped
+    networks:
+      - {{NETWORK_NAME}}
+
+volumes:
+  {{DB_VOLUME_NAME}}:
+    driver: local
+  {{CACHE_VOLUME_NAME}}:
+    driver: local
+
+networks:
+  {{NETWORK_NAME}}:
+    driver: bridge
